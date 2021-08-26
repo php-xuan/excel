@@ -10,14 +10,19 @@ namespace App\Utility\Excel;
 
 
 use EasySwoole\Component\Singleton;
+use App\Utility\Common;
 
+/**
+ * php-excel 封装
+ *    composer: phpoffice/phpexcel
+ *     支持:1.断点续导 2.一次分批导出 3.多sheet/无限极头
+ *
+ * @author vartruexuan <guozhaoxuanx@163.com>
+ * @package App\Utility\Excel
+ */
 class PhpExcelHelper
 {
     use Singleton;
-
-    public $defaultConfig = [
-
-    ];
 
     /**
      * 导出excel
@@ -39,7 +44,7 @@ class PhpExcelHelper
                     [
                         'sheet_name' => '页码名称',
                         'sheet_header' => '页头信息(支持多级)',// array:参考 setHeader()
-                        // $fileObj ,$format 全局样式 , endCol 最大列下标
+                        // 全局操作
                         'default_format' => function (\PHPExcel_Worksheet $sheet) {
                         },
                         // $params => ['limit'=>1,'offset'=>1]  设置 data_count 时提供
@@ -119,7 +124,7 @@ class PhpExcelHelper
                     }
                     $dataType = array_column($dataHeaders, 'type');
                     // 插入数据
-                    $this->writerRow($sheet, array_values($newVal), $maxRow + $params['offset'] + $k + 1, $dataType);
+                    $this->writerRow($sheet, $newVal, $maxRow + $params['offset'] + $k + 1, $dataType);
                 }
             }
         }
@@ -153,6 +158,7 @@ class PhpExcelHelper
     }
 
     /**
+     *
      * 设置头部(支持多级)
      *
      * @param array               $headers     头参数
@@ -162,9 +168,11 @@ class PhpExcelHelper
      * @param int                 $rowIndex    当前行
      * @param int                 $endColIndex 当前结束列
      * @param bool                $isAdd       是否追加数据
+     * @param array               $style       样式（待）
      * @param int                 $level       当前层级
      *
-     * @return  bool
+     * @return bool
+     * @throws \PHPExcel_Exception
      */
     protected function setHeader(array $headers, \PHPExcel_Worksheet $sheet, &$maxRow = 1, &$dataHeaders = [], $rowIndex = 1, &$endColIndex = -1, $isAdd = false, $style = [], $level = 1)
     {
@@ -201,7 +209,7 @@ class PhpExcelHelper
             // 设置默认参数
             $head = array_merge([
                 "title" => "",
-                "type" => "string",
+                "type" => \PHPExcel_Cell_DataType::TYPE_STRING,
                 "key" => "",
                 "style" => function (\PHPExcel_Worksheet $sheet, $rowIndex, $startColIndex) {
                 },
@@ -285,7 +293,7 @@ class PhpExcelHelper
     }
 
     /**
-     * 计算colspan
+     * 计算colspan(多级)
      *
      * @param     $header
      * @param int $level
@@ -310,15 +318,16 @@ class PhpExcelHelper
     /**
      * 写入行数据
      *
-     * @param \PHPExcel_Worksheet $sheet
-     * @param                     $row
-     * @param int                 $rowIndex
-     * @param array               $colDataTypes 列数据类型
+     * @param \PHPExcel_Worksheet $sheet        当前sheet对象
+     * @param array               $row          当前行数据
+     * @param int                 $rowIndex     行下标
+     * @param array               $colDataTypes 列数据类型 []
      *
      * @author:郭昭璇
      */
     protected function writerRow(\PHPExcel_Worksheet $sheet, $row, $rowIndex = 1, $colDataTypes = [])
     {
+        $row=array_values($row);
         foreach ($row as $columnIndex => $value) {
             $pDataType = \PHPExcel_Cell_DataType::TYPE_STRING;// 默认字符串
             $pDataType = $colDataTypes[$columnIndex] ?? $pDataType;
@@ -331,11 +340,11 @@ class PhpExcelHelper
      * 写入单元格数据
      *
      * @param \PHPExcel_Worksheet $sheet
-     * @param                     $columnIndex
-     * @param                     $rowIndex
-     * @param                     $value
-     * @param string              $pDataType
-     * @param callable|null       $cellFun
+     * @param int                 $columnIndex 列下标
+     * @param int                 $rowIndex    行下标
+     * @param mixed               $value       列值
+     * @param string              $pDataType   当前列数据类型PHPExcel_Cell_DataType
+     * @param callable|null       $cellFun     单元格处理回调:function(\PHPExcel_Cell $cell){ .... }
      */
     protected function writerCell(\PHPExcel_Worksheet $sheet, $columnIndex, $rowIndex, $value, $pDataType = \PHPExcel_Cell_DataType::TYPE_STRING, callable $cellFun = null)
     {
