@@ -54,7 +54,7 @@ class PhpExcelHelper
                             return 2;
                         },
                         "is_calculation_colspan" => true, // 是否智能计算colspan
-
+                        "is_freeze_pane"=>false, // 是否头部固定
                     ],
                 ];*/
 
