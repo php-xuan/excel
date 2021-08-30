@@ -54,6 +54,7 @@ class PhpExcelHelper
                             return 2;
                         },
                         "is_calculation_colspan" => true, // 是否智能计算colspan
+
                     ],
                 ];*/
 
@@ -67,6 +68,7 @@ class PhpExcelHelper
             $dataCount = $sheet['data_count'] ?? false;
             $defaultFormat = $sheet['default_format'] ?? null; // 全局默认单元格样式
             $isCalculationColspan = $sheet['is_calculation_colspan'] ?? true;// 是否只能计算colspan
+            $isFreezePane=$sheet['is_freeze_pane']??false;// 是否冻结头部
             $totalCount = $dataCount;
             if (is_callable($dataCount)) {
                 $totalCount = $dataCount();
@@ -81,7 +83,7 @@ class PhpExcelHelper
                 $sheetHeader = $this->calculationColspan($sheetHeader);
             }
             $endColIndex = -1;
-            $this->setHeader($sheetHeader, $sheet, $maxRow, $dataHeaders, 1, $endColIndex);
+            $this->addHeader($sheetHeader, $sheet, $maxRow, $dataHeaders, 1, $endColIndex,$isAdd,$isFreezePane);
             if ($isAdd) {
                 // 追加时起始位置
                 $maxRow = $sheet->getHighestRow();
@@ -109,22 +111,28 @@ class PhpExcelHelper
                 // 数据格式化
                 foreach ($data ?? [] as $k => &$v) {
                     $newVal = [];
+                    $rowIndex=$maxRow + $params['offset'] + $k + 1;
                     foreach ($dataHeaders as $colIndex => $head) {
                         // 执行单元格回调
                         if (is_callable($head['cellFormat'])) {
                             $newVal[$head['key']] = call_user_func_array($head['cellFormat'], [
                                 'key' => $head['key'],
                                 'row' => $v, // 行数据
-                                'rowIndex' => $params['offset'] + $k, // 行索引
-                                'colIndex' => $keysIndex[$head['key']]   // 列索引
+                                'rowIndex' =>$rowIndex, // 行索引
+                                'colIndex' => $keysIndex[$head['key']], // 列索引
                             ]);
                         } else {
                             $newVal[$head['key']] = $v[$head['key']] ?? '';
                         }
+                        // 样式回调
+                        if (is_callable($head['style'])) {
+                            $head['style']($sheet, $rowIndex, $keysIndex[$head['key']],false,$v);
+                        }
                     }
                     $dataType = array_column($dataHeaders, 'type');
                     // 插入数据
-                    $this->writerRow($sheet, $newVal, $maxRow + $params['offset'] + $k + 1, $dataType);
+                    $this->writerRow($sheet, $newVal, $rowIndex, $dataType);
+
                 }
             }
         }
@@ -157,6 +165,32 @@ class PhpExcelHelper
         return $excelObj;
     }
 
+
+    /**
+     * 设置头部(支持多级)
+     *
+     * @param  array  $headers
+     * @param  \PHPExcel_Worksheet  $sheet
+     * @param  int  $maxRow
+     * @param  array  $dataHeaders
+     * @param  int  $rowIndex
+     * @param  int  $endColIndex
+     * @param  false  $isAdd
+     * @param  false  $isFreezePane
+     *
+     * @throws \PHPExcel_Exception
+     */
+    protected function addHeader(array $headers, \PHPExcel_Worksheet $sheet, &$maxRow = 1, &$dataHeaders = [], $rowIndex = 1, &$endColIndex = -1, $isAdd = false,$isFreezePane=false)
+    {
+        $this->setHeader($headers, $sheet, $maxRow, $dataHeaders, 1, $endColIndex,$isAdd);
+        if($isFreezePane){
+            // 冻结头部
+            for($j=$rowIndex;$j<=$maxRow+1;$j++){
+                $sheet->freezePaneByColumnAndRow(0,$j);
+            }
+        }
+    }
+
     /**
      *
      * 设置头部(支持多级)
@@ -183,8 +217,12 @@ class PhpExcelHelper
                         "title" => "列名称",
                         "type" => \PHPExcel_Cell_DataType::TYPE_STRING,// 数据类型
                         "key" => "name", // 数据key
-                        "style" => function ($cell) { // 当前head 单元格样式
-
+                        "style" => function (\PHPExcel_Worksheet $sheet,$rowIndex, $colIndex,$isHeader,$row) { // 当前head 单元格样式
+                                    // $sheet 页操作对象
+                                    // $rowIndex 当前行索引
+                                    // $colIndex 当前列索引
+                                    // $isHeader 当前是否是header头部
+                                    // $row 当前行数据（$isHeader=false）
                         },
                         // 列数据格式化 (提供key时)
                         "cellFormat" => function ($key, $row, $rowIndex, $colIndex, $colIndexStr) {
@@ -226,6 +264,7 @@ class PhpExcelHelper
                     'key' => $head['key'],
                     'type' => $head['type'] ?? \PHPExcel_Cell_DataType::TYPE_STRING,
                     'cellFormat' => $head['cellFormat'] ?? null,
+                    'style'=>$head['style']??null,
                 ];
             }
 
@@ -274,10 +313,9 @@ class PhpExcelHelper
                         $sheet->getStyle($cellRange)->getFill()->setFillType(\PHPExcel_Style_Fill::FILL_SOLID)->getStartColor()->setARGB($color);
                         $sheet->getStyle($cellRange)->getFont()->getColor()->setARGB(\PHPExcel_Style_Color::COLOR_WHITE);
                     }
-
                     // 样式回调
                     if (isset($head['style']) && is_callable($head['style'])) {
-                        $head['style']($sheet, $rowIndex, $startColIndex);
+                        $head['style']($sheet, $rowIndex, $startColIndex,true);
                     }
                 });
             }
@@ -379,5 +417,15 @@ class PhpExcelHelper
         return \PHPExcel_Cell::columnIndexFromString($strIndex);
     }
 
+    /**
+     * 获取header主题，配色方案(待)
+     */
+    protected function getHeaderTheme()
+    {
+
+        return [
+            'default'=>[],
+        ];
+    }
 
 }
