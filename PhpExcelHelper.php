@@ -27,10 +27,10 @@ class PhpExcelHelper
     /**
      * 导出excel
      *
-     * @param array  $sheets   页码参数,可多页
-     * @param string $filePath 导出文件地址（未提供，则导入到临时文件）
-     * @param int    $pageSize 分页导出时，一页导出数量
-     * @param bool   $isAdd    是否追加
+     * @param  array  $sheets  页码参数,可多页
+     * @param  string  $filePath  导出文件地址（未提供，则导入到临时文件）
+     * @param  int  $pageSize  分页导出时，一页导出数量
+     * @param  bool  $isAdd  是否追加
      *
      * @return bool
      * @throws \PHPExcel_Exception
@@ -54,7 +54,7 @@ class PhpExcelHelper
                             return 2;
                         },
                         "is_calculation_colspan" => true, // 是否智能计算colspan
-                        "is_freeze_pane"=>false, // 是否头部固定
+
                     ],
                 ];*/
 
@@ -68,7 +68,7 @@ class PhpExcelHelper
             $dataCount = $sheet['data_count'] ?? false;
             $defaultFormat = $sheet['default_format'] ?? null; // 全局默认单元格样式
             $isCalculationColspan = $sheet['is_calculation_colspan'] ?? true;// 是否只能计算colspan
-            $isFreezePane=$sheet['is_freeze_pane']??false;// 是否冻结头部
+            $isFreezePane = $sheet['is_freeze_pane'] ?? false;// 是否冻结头部
             $totalCount = $dataCount;
             if (is_callable($dataCount)) {
                 $totalCount = $dataCount();
@@ -83,7 +83,7 @@ class PhpExcelHelper
                 $sheetHeader = $this->calculationColspan($sheetHeader);
             }
             $endColIndex = -1;
-            $this->addHeader($sheetHeader, $sheet, $maxRow, $dataHeaders, 1, $endColIndex,$isAdd,$isFreezePane);
+            $this->addHeader($sheetHeader, $sheet, $maxRow, $dataHeaders, 1, $endColIndex, $isAdd, $isFreezePane);
             if ($isAdd) {
                 // 追加时起始位置
                 $maxRow = $sheet->getHighestRow();
@@ -111,32 +111,30 @@ class PhpExcelHelper
                 // 数据格式化
                 foreach ($data ?? [] as $k => &$v) {
                     $newVal = [];
-                    $rowIndex=$maxRow + $params['offset'] + $k + 1;
+                    $rowIndex = $maxRow + $params['offset'] + $k + 1;
                     foreach ($dataHeaders as $colIndex => $head) {
                         // 执行单元格回调
                         if (is_callable($head['cellFormat'])) {
                             $newVal[$head['key']] = call_user_func_array($head['cellFormat'], [
-                                'key' => $head['key'],
-                                'row' => $v, // 行数据
-                                'rowIndex' =>$rowIndex, // 行索引
+                                'key'      => $head['key'],
+                                'row'      => $v, // 行数据
+                                'rowIndex' => $rowIndex, // 行索引
                                 'colIndex' => $keysIndex[$head['key']], // 列索引
                             ]);
                         } else {
-                            $newVal[$head['key']] = $v[$head['key']] ?? '';
+                            $newVal[$head['key']] = isset($v[$head['key']]) ?$v[$head['key']]: null;
                         }
                         // 样式回调
                         if (is_callable($head['style'])) {
-                            $head['style']($sheet, $rowIndex, $keysIndex[$head['key']],false,$v);
+                            $head['style']($sheet, $rowIndex, $keysIndex[$head['key']], false, $v);
                         }
                     }
                     $dataType = array_column($dataHeaders, 'type');
                     // 插入数据
                     $this->writerRow($sheet, $newVal, $rowIndex, $dataType);
-
                 }
             }
         }
-
         $writer = \PHPExcel_IOFactory::createWriter($excelObj, 'Excel2007');
         $writer->save($filePath);
 
@@ -146,8 +144,8 @@ class PhpExcelHelper
     /**
      * 获取excel对象
      *
-     * @param false $isAdd 是否追加
-     * @param null  $filePath
+     * @param  false  $isAdd  是否追加
+     * @param  null  $filePath
      *
      * @return \PHPExcel
      * @throws \PHPExcel_Reader_Exception
@@ -180,13 +178,13 @@ class PhpExcelHelper
      *
      * @throws \PHPExcel_Exception
      */
-    protected function addHeader(array $headers, \PHPExcel_Worksheet $sheet, &$maxRow = 1, &$dataHeaders = [], $rowIndex = 1, &$endColIndex = -1, $isAdd = false,$isFreezePane=false)
+    protected function addHeader(array $headers, \PHPExcel_Worksheet $sheet, &$maxRow = 1, &$dataHeaders = [], $rowIndex = 1, &$endColIndex = -1, $isAdd = false, $isFreezePane = false)
     {
-        $this->setHeader($headers, $sheet, $maxRow, $dataHeaders, 1, $endColIndex,$isAdd);
-        if($isFreezePane){
+        $this->setHeader($headers, $sheet, $maxRow, $dataHeaders, 1, $endColIndex, $isAdd);
+        if ($isFreezePane) {
             // 冻结头部
-            for($j=$rowIndex;$j<=$maxRow+1;$j++){
-                $sheet->freezePaneByColumnAndRow(0,$j);
+            for ($j = $rowIndex; $j <= $maxRow + 1; $j++) {
+                $sheet->freezePaneByColumnAndRow(0, $j);
             }
         }
     }
@@ -195,22 +193,21 @@ class PhpExcelHelper
      *
      * 设置头部(支持多级)
      *
-     * @param array               $headers     头参数
-     * @param \PHPExcel_Worksheet $sheet       操作对象
-     * @param int                 $maxRow      头部占用行数
-     * @param array               $dataHeaders 数据字段信息（包含 key ）
-     * @param int                 $rowIndex    当前行
-     * @param int                 $endColIndex 当前结束列
-     * @param bool                $isAdd       是否追加数据
-     * @param array               $style       样式（待）
-     * @param int                 $level       当前层级
+     * @param  array  $headers  头参数
+     * @param  \PHPExcel_Worksheet  $sheet  操作对象
+     * @param  int  $maxRow  头部占用行数
+     * @param  array  $dataHeaders  数据字段信息（包含 key ）
+     * @param  int  $rowIndex  当前行
+     * @param  int  $endColIndex  当前结束列
+     * @param  bool  $isAdd  是否追加数据
+     * @param  array  $style  样式（待）
+     * @param  int  $level  当前层级
      *
      * @return bool
      * @throws \PHPExcel_Exception
      */
     protected function setHeader(array $headers, \PHPExcel_Worksheet $sheet, &$maxRow = 1, &$dataHeaders = [], $rowIndex = 1, &$endColIndex = -1, $isAdd = false, $style = [], $level = 1)
     {
-
         // headers 配置：可无限极
         /*        [
                     [
@@ -246,25 +243,25 @@ class PhpExcelHelper
         foreach ($headers as $headerIndex => $head) {
             // 设置默认参数
             $head = array_merge([
-                "title" => "",
-                "type" => \PHPExcel_Cell_DataType::TYPE_STRING,
-                "key" => "",
-                "style" => function (\PHPExcel_Worksheet $sheet, $rowIndex, $startColIndex) {
+                "title"    => "",
+                "type"     => \PHPExcel_Cell_DataType::TYPE_STRING,
+                "key"      => "",
+                "style"    => function (\PHPExcel_Worksheet $sheet, $rowIndex, $startColIndex) {
                 },
-                "width" => 0,// 宽度
+                "width"    => 0,// 宽度
                 "children" => [],
-                "colspan" => 1,
-                "rowspan" => 1,
+                "colspan"  => 1,
+                "rowspan"  => 1,
             ], $head);
 
 
             // 设置数据 key/类型 （排序位置）
             if ($head['key']) {
                 $dataHeaders[] = [
-                    'key' => $head['key'],
-                    'type' => $head['type'] ?? \PHPExcel_Cell_DataType::TYPE_STRING,
+                    'key'        => $head['key'],
+                    'type'       => $head['type'] ?? \PHPExcel_Cell_DataType::TYPE_STRING,
                     'cellFormat' => $head['cellFormat'] ?? null,
-                    'style'=>$head['style']??null,
+                    'style'      => $head['style'] ?? null,
                 ];
             }
 
@@ -286,6 +283,7 @@ class PhpExcelHelper
                 // 合并行 A1:B3
                 $sheet->mergeCellsByColumnAndRow($startColIndex, $startRow, $endColIndex, $endRow);
 
+
                 $this->writerCell($sheet, $startColIndex, $startRow, $head['title'], \PHPExcel_Cell_DataType::TYPE_STRING, function (\PHPExcel_Cell $cell) use ($level, $sheet, $rowIndex, $startColIndex, $head, $endRow, $endColIndex, $headerIndex) {
                     // 设置默认样式
                     $cell->getStyle()->getFont()->setBold(true);// 加粗
@@ -301,12 +299,12 @@ class PhpExcelHelper
                                 'allborders' => [ //设置全部边框
                                                   'style' => \PHPExcel_Style_Border::BORDER_THIN, //粗的是thick
                                                   'color' => [
-                                                      'argb' => \PHPExcel_Style_Color::COLOR_BLUE
+                                                      'argb' => \PHPExcel_Style_Color::COLOR_BLUE,
                                                   ],
                                 ],
                             ],
                         ];
-                        $cellRange = self::stringFromColumnIndex($startColIndex) . $rowIndex . ':' . self::stringFromColumnIndex($endColIndex) . $endRow;
+                        $cellRange = self::stringFromColumnIndex($startColIndex).$rowIndex.':'.self::stringFromColumnIndex($endColIndex).$endRow;
                         $sheet->getStyle($cellRange)->applyFromArray($styleThinBlackBorderOutline);
                         // 设置个背景色
                         $color = $headerIndex % 2 == 0 ? \PHPExcel_Style_Color::COLOR_DARKBLUE : \PHPExcel_Style_Color::COLOR_DARKGREEN;
@@ -315,7 +313,7 @@ class PhpExcelHelper
                     }
                     // 样式回调
                     if (isset($head['style']) && is_callable($head['style'])) {
-                        $head['style']($sheet, $rowIndex, $startColIndex,true);
+                        $head['style']($sheet, $rowIndex, $startColIndex, true);
                     }
                 });
             }
@@ -334,7 +332,7 @@ class PhpExcelHelper
      * 计算colspan(多级)
      *
      * @param     $header
-     * @param int $level
+     * @param  int  $level
      *
      * @return mixed
      */
@@ -350,22 +348,23 @@ class PhpExcelHelper
                 $head['colspan'] = 1;
             }
         }
+
         return $header;
     }
 
     /**
      * 写入行数据
      *
-     * @param \PHPExcel_Worksheet $sheet        当前sheet对象
-     * @param array               $row          当前行数据
-     * @param int                 $rowIndex     行下标
-     * @param array               $colDataTypes 列数据类型 []
+     * @param  \PHPExcel_Worksheet  $sheet  当前sheet对象
+     * @param  array  $row  当前行数据
+     * @param  int  $rowIndex  行下标
+     * @param  array  $colDataTypes  列数据类型 []
      *
      * @author:郭昭璇
      */
     protected function writerRow(\PHPExcel_Worksheet $sheet, $row, $rowIndex = 1, $colDataTypes = [])
     {
-        $row=array_values($row);
+        $row = array_values($row);
         foreach ($row as $columnIndex => $value) {
             $pDataType = \PHPExcel_Cell_DataType::TYPE_STRING;// 默认字符串
             $pDataType = $colDataTypes[$columnIndex] ?? $pDataType;
@@ -377,19 +376,26 @@ class PhpExcelHelper
      *
      * 写入单元格数据
      *
-     * @param \PHPExcel_Worksheet $sheet
-     * @param int                 $columnIndex 列下标
-     * @param int                 $rowIndex    行下标
-     * @param mixed               $value       列值
-     * @param string              $pDataType   当前列数据类型PHPExcel_Cell_DataType
-     * @param callable|null       $cellFun     单元格处理回调:function(\PHPExcel_Cell $cell){ .... }
+     * @param  \PHPExcel_Worksheet  $sheet
+     * @param  int  $columnIndex  列下标
+     * @param  int  $rowIndex  行下标
+     * @param  mixed  $value  列值
+     * @param  string  $pDataType  当前列数据类型PHPExcel_Cell_DataType
+     * @param  callable|null  $cellFun  单元格处理回调:function(\PHPExcel_Cell $cell){ .... }
      */
     protected function writerCell(\PHPExcel_Worksheet $sheet, $columnIndex, $rowIndex, $value, $pDataType = \PHPExcel_Cell_DataType::TYPE_STRING, callable $cellFun = null)
     {
+        // null 值的置空
+        if($value===null){
+            $pDataType=\PHPExcel_Cell_DataType::TYPE_STRING;
+            $value='';
+        }
         $cell = $sheet->setCellValueExplicitByColumnAndRow($columnIndex, $rowIndex, $value, $pDataType, true);
+
         if (is_callable($cellFun)) {
             $cellFun($cell);
         }
+
         return $cell;
     }
 
@@ -422,9 +428,8 @@ class PhpExcelHelper
      */
     protected function getHeaderTheme()
     {
-
         return [
-            'default'=>[],
+            'default' => [],
         ];
     }
 
